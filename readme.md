@@ -2,7 +2,7 @@
 
 # Howerpoint - forget about Powerpoint!!
 
-* ghci based presentation engine
+* **ghci** based presentation engine
 * idea (no code) stolen from [REPLesent](https://github.com/marconilanna/REPLesent)
 
 _It's only a single Haskell file!_
@@ -19,6 +19,9 @@ Command | Description
 --- | ---
 `n` | Go to next slide
 `p` | Go to previous slide
+`nn i` | Advance i slides
+`pp i` | Go back i slides
+`g i` | Go slide i
 
 <!--
 Command | Shortcut | Symbolic alias | Description
