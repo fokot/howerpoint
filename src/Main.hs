@@ -14,23 +14,27 @@ data PresentationSetting = PresentationSetting {
   height :: Int
 }
 
-padding :: Int -> Int -> Int
-padding size contentSize = ceiling $ (fromIntegral (size - contentSize)) / 2
+padding :: Int -> Int -> (Int, Int)
+padding size contentSize = (half, if odd (size - contentSize) then half + 1 else half)
+  where half = floor $ (fromIntegral (size - contentSize)) / 2
+
 
 repeatN n = take n . repeat
 
 drawFrame :: PresentationSetting -> [String] -> [String]
 drawFrame ps content =
-  line :  (repeatN verticalPadding emptyLine) ++ map centerLine content ++ repeatN verticalPadding emptyLine ++ [line]
-  where verticalPadding = (padding (height ps) (length content)) - 1
+  line :  (repeatN topPadding emptyLine) ++ map centerLine content ++ repeatN bottomPadding emptyLine ++ [line]
+  where (topPadding, bottomPadding) = padding (height ps) (length content)
         line = take (width ps) $ repeat '*'
         emptyLine = '*' : (repeatN ((width ps) -2) ' ') ++ "*"
         centerLine :: String -> String
-        centerLine lineContent = '*' :
-                                 (repeatN ((padding (width ps) (length lineContent)) - 1) ' ') ++
-                                 lineContent ++
-                                 (repeatN ((padding (width ps) (length lineContent)) - 1) ' ') ++
-                                 "*"
+        centerLine lineContent =
+          let (leftPadding, rightPadding) = padding (width ps) (length lineContent)
+          in '*' :
+             (repeatN (leftPadding - 1) ' ') ++
+             lineContent ++
+             (repeatN (rightPadding - 1) ' ') ++
+             "*"
 
 
 loadFile :: String -> IO ()
