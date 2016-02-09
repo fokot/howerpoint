@@ -1,0 +1,15 @@
+This is Howerpoint
+Powerpoint replacement
+---
+\rThis line is red
+\gAnd this line is green
+And this \yword\w is yellow
+More \mcolors \rin one \wline, wow!
+---
+3
+---
+4
+---
+5
+---
+6

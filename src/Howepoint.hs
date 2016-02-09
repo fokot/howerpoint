@@ -6,8 +6,9 @@ import System.IO
 import Data.List.Split
 import Data.IORef
 import Control.DeepSeq (deepseq)
+import System.Console.Terminal.Size (size)
 
-f = "/Users/Frantisek/haskell/howerpoint/test/resources/test_navigation.txt"
+f = "/Users/Frantisek/haskell/howerpoint/test/resources/howerpoint.txt"
 
 type Slide = [String]
 
@@ -31,6 +32,9 @@ data Presentation = Presentation {
   nn :: Int -> IO (),
   pp :: Int -> IO (),
   g :: Int -> IO ()
+--   resetSize :: IO (),
+--   setSize :: Int -> Int -> IO (),
+--   showSize :: IO ()
 }
 
 parseSlides :: String -> IO [Slide]
@@ -64,7 +68,13 @@ loadPresentation path = do
   let advanceSlides = \i -> moveSlide slides currentSlide (\x -> if x + i >= maxSlides - 1 then maxSlides - 1 else x + i)
   let goBackSlides = \i -> moveSlide slides currentSlide (\x -> if x - i <= 0 then 0 else x - i)
   let goToSlide = \i -> moveSlide slides currentSlide (\x -> if i > 0 && i <= maxSlides then i - 1 else x)
-  return $ Presentation nextSlide previousSlide advanceSlides goBackSlides goToSlide
+  return $ Presentation {
+    n = nextSlide,
+    p = previousSlide,
+    nn = advanceSlides,
+    pp = goBackSlides,
+    g = goToSlide
+  }
 
 -- |calculates left-right or top-bottom padding from the maximum size and content size
 padding :: Int -> Int -> (Int, Int)
@@ -82,9 +92,36 @@ formatSlide ps content =
         emptyLine = '*' : (repeatN ((width ps) -2) ' ') ++ "*"
         centerLine :: String -> String
         centerLine lineContent =
-          let (leftPadding, rightPadding) = padding (width ps) (length lineContent)
+          let (colorizedContent, len) = colorize lineContent
+              (leftPadding, rightPadding) = padding (width ps) len
           in '*' :
              (repeatN (leftPadding - 1) ' ') ++
-             lineContent ++
+             colorizedContent ++
              (repeatN (rightPadding - 1) ' ') ++
              "*"
+
+colorSet x = case x of
+  'k' -> toColor 30 -- Black
+  'r' -> toColor 31 -- Red
+  'g' -> toColor 32 -- Green
+  'y' -> toColor 33 -- Yellow
+  'b' -> toColor 34 -- Blue
+  'm' -> toColor 35 -- Magenta
+  'c' -> toColor 36 -- Cyan
+  'w' -> toColor 37 -- White
+  'a' -> [x]   -- No coloring
+  where toColor c = "\x1b[" ++ show c ++ "m"
+
+colorReset = "\x1b[0m"
+
+-- it also takes care of escaping to ;\\k' will be just '\k' and not black color
+colorize :: String -> (String, Int)
+colorize line = if elem '\\' line then colorize' line [] (length line) else (line, length line)
+  where colorize' [] acc len = (acc ++ colorReset, len)
+        colorize' ('\\':x:xs) acc len = let c = colorSet x
+                                        in colorize' xs (acc ++ c) (if c == [x] then len else len - 2)
+        colorize' (x:xs) acc len = colorize' xs (acc ++ [x]) len
+
+
+-- gets the terminal size
+-- import System.Console.Terminal.Size (size)

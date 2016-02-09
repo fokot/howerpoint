@@ -17,11 +17,16 @@ Load Howepoint.hs to ghci, enable RecordWildCards and load presentation
 ### Navigation commands
 Command | Description
 --- | ---
+`h` | Help
 `n` | Go to next slide
 `p` | Go to previous slide
 `nn i` | Advance i slides
 `pp i` | Go back i slides
 `g i` | Go slide i
+`resetSize` | Set the slide size to current terminal size
+`setSize x y` | Set the slide size to x y
+`showSize` | Show current slide size
+
 
 <!--
 Command | Shortcut | Symbolic alias | Description
@@ -41,3 +46,13 @@ Command | Shortcut | Symbolic alias | Description
 `blank` | `b` | | Blank screen
 `help` | `h` | `?` | This help message
 -->
+
+
+###ANSI colors
+
+Escape code	| Result
+--- | ---
+\x | Foreground color, where x is one of: `b`lack, `r`ed, `g`reen, `y`ellow, `b`lue, `m`agenta, `c`yan, `w`hite
+
+
+<!-- \X | Background color, where capital X is one of the same as above -->
