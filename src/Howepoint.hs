@@ -7,6 +7,7 @@ import Data.List.Split
 import Data.IORef
 import Control.DeepSeq (deepseq)
 import System.Console.Terminal.Size (size)
+import Data.Char (isLower, toLower)
 
 f = "/Users/Frantisek/haskell/howerpoint/test/resources/howerpoint.txt"
 
@@ -100,17 +101,17 @@ formatSlide ps content =
              (repeatN (rightPadding - 1) ' ') ++
              "*"
 
-colorSet x = case x of
-  'k' -> toColor 30 -- Black
-  'r' -> toColor 31 -- Red
-  'g' -> toColor 32 -- Green
-  'y' -> toColor 33 -- Yellow
-  'b' -> toColor 34 -- Blue
-  'm' -> toColor 35 -- Magenta
-  'c' -> toColor 36 -- Cyan
-  'w' -> toColor 37 -- White
-  'a' -> [x]   -- No coloring
-  where toColor c = "\x1b[" ++ show c ++ "m"
+-- foreground colors 30-37, background colors 40-47
+color x = maybe [x] (\c -> "\x1b[" ++ show (if isLower x then c + 30 else c + 40) ++ "m" ) maybeColor
+  where maybeColor = case toLower x of  'k' -> Just 0 -- Black
+                                        'r' -> Just 1 -- Red
+                                        'g' -> Just 2 -- Green
+                                        'y' -> Just 3 -- Yellow
+                                        'b' -> Just 4 -- Blue
+                                        'm' -> Just 5 -- Magenta
+                                        'c' -> Just 6 -- Cyan
+                                        'w' -> Just 7 -- White
+                                        _   -> Nothing -- No coloring
 
 colorReset = "\x1b[0m"
 
@@ -118,7 +119,7 @@ colorReset = "\x1b[0m"
 colorize :: String -> (String, Int)
 colorize line = if elem '\\' line then colorize' line [] (length line) else (line, length line)
   where colorize' [] acc len = (acc ++ colorReset, len)
-        colorize' ('\\':x:xs) acc len = let c = colorSet x
+        colorize' ('\\':x:xs) acc len = let c = color x
                                         in colorize' xs (acc ++ c) (if c == [x] then len else len - 2)
         colorize' (x:xs) acc len = colorize' xs (acc ++ [x]) len
 

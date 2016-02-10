@@ -6,7 +6,10 @@ Powerpoint replacement
 And this \yword\w is yellow
 More \mcolors \rin one \wline, wow!
 ---
-3
+\RThis line has red background
+\GAnd this line has green background
+And this \Yword\W has yellow
+More \k\Mcolors \Rin one \Wline, wow!
 ---
 4
 ---

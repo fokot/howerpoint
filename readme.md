@@ -53,6 +53,4 @@ Command | Shortcut | Symbolic alias | Description
 Escape code	| Result
 --- | ---
 \x | Foreground color, where x is one of: `b`lack, `r`ed, `g`reen, `y`ellow, `b`lue, `m`agenta, `c`yan, `w`hite
-
-
-<!-- \X | Background color, where capital X is one of the same as above -->
+\X | Background color, where capital X is one of the same as above
