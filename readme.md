@@ -10,7 +10,7 @@ _It's only a single Haskell file!_
 To run presentation create presentation as a text file.
 Load Howepoint.hs to ghci, enable RecordWildCards and load presentation
 
-    $ ghci Hoverpoint.hs
+    $ stack ghci Hoverpoint.hs
     Main> :set -XRecordWildCards
     Main> Presentation {..} <- loadPresentation "PATH-TO-PRESENTATION"
 
@@ -22,7 +22,7 @@ Command | Description
 `p` | Go to previous slide
 `nn i` | Advance i slides
 `pp i` | Go back i slides
-`g i` | Go slide i
+`g i` | Go to slide i
 `resetSize` | Set the slide size to current terminal size
 `setSize x y` | Set the slide size to x y
 `showSize` | Show current slide size
