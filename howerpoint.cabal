@@ -14,7 +14,7 @@ build-type:           Simple
 cabal-version:        >=1.10
 
 executable howerpoint
-  main-is:              Main.hs
+  main-is:              Howerpoint.hs
   -- other-modules:
   -- other-extensions:
   build-depends:        base >= 4.7 && < 5, deepseq, terminal-size, split

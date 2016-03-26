@@ -1,0 +1,9 @@
+:set -XRecordWildCards
+
+:load "/Users/Frantisek/haskell/howerpoint/src/Howerpoint.hs"
+
+:def loadPresentation \p -> return $ "Presentation {..} <- loadPresentation \"" ++ p ++ "\""
+
+:def loadTestPresentation const . return $ "Presentation {..} <- loadPresentation \"/Users/Frantisek/haskell/howerpoint/test/resources/howerpoint.txt\""
+
+:def rc const . return $ ":cmd runCommandsFromSlide"

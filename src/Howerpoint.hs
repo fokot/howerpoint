@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Howepoint where
+module Howerpoint where
 
 import System.IO
 import Data.List.Split
@@ -9,8 +9,6 @@ import Control.DeepSeq (deepseq)
 import qualified System.Console.Terminal.Size as T
 import Data.Char (isLower, toLower)
 import Data.Maybe (isJust, fromMaybe)
-
-f = "/Users/Frantisek/haskell/howerpoint/test/resources/howerpoint.txt"
 
 type Slide = [String]
 
@@ -21,10 +19,15 @@ data PresentationState = PresentationState {
   currentSlide :: Int
 }
 
+codeFromSlide :: IO String
+codeFromSlide = pure "let x = 100"
+
+codeFromAllPreviousSlides :: IO String
+codeFromAllPreviousSlides = pure "let y = 100"
+
 h = do
   putStrLn "To start presentation run:"
-  putStrLn "  :set -XRecordWildCards"
-  putStrLn "  Presentation {..} <- loadPresentation \"PATH-TO-PRESENTATION\""
+  putStrLn "  :loadPresentation PATH-TO-PRESENTATION"
 
 
 data Presentation = Presentation {

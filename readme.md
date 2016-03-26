@@ -8,11 +8,11 @@
 _It's only a single Haskell file!_
 
 To run presentation create presentation as a text file.
-Load Howepoint.hs to ghci, enable RecordWildCards and load presentation
+Run `stack ghci` and have in the in the root of the project
 
-    $ stack ghci Hoverpoint.hs
-    Main> :set -XRecordWildCards
-    Main> Presentation {..} <- loadPresentation "PATH-TO-PRESENTATION"
+
+    $ stack ghci
+    Main> :loadPresentation PATH-TO-PRESENTATION
 
 ### Navigation commands
 Command | Description
