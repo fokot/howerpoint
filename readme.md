@@ -10,19 +10,26 @@ _It's only a single Haskell file!_
 To run presentation create presentation as a text file.
 Run `stack ghci` and have in the in the root of the project
 
+    $ stack ghci
+    Howerpoint> :loadPresentation PATH-TO-PRESENTATION
+
+Good stating poitn is test presentations
 
     $ stack ghci
-    Main> :loadPresentation PATH-TO-PRESENTATION
+    Howerpoint> :loadTestPresentation
 
 ### Navigation commands
 Command | Description
 --- | ---
-`h` | Help
+`:loadTestPresentation` | Load test presentation
+`:loadPresentation <PATH-TO-YOUR-PRESENTATION>` | Load your presentation
+`help` | Help
 `n` | Go to next slide
 `p` | Go to previous slide
 `nn i` | Advance i slides
 `pp i` | Go back i slides
 `g i` | Go to slide i
+`:rr` | Run code from slide
 `resetSize` | Set the slide size to current terminal size
 `setSize x y` | Set the slide size to x y
 `showSize` | Show current slide size
@@ -54,3 +61,19 @@ Escape code	| Result
 --- | ---
 \x | Foreground color, where x is one of: `b`lack, `r`ed, `g`reen, `y`ellow, `b`lue, `m`agenta, `c`yan, `w`hite
 \X | Background color, where capital X is one of the same as above
+
+###Code
+
+All code is run in ghci so don't forget `let`s and `:m +` as imports etc.
+
+\>\>\> show code on a slide and also the same code will be run
+
+    >>>putStrLn . show $ double 5
+
+L\>\> show code on a slide and when the code is run it prepends `let`
+
+    L>>double x = x + x
+
+H\>\> doesn't show code on a slide but the code is run. It's useful for imports
+
+    H>>:m +Data.Char

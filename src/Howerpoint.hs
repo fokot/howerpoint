@@ -8,7 +8,9 @@ import Data.IORef
 import Control.DeepSeq (deepseq)
 import qualified System.Console.Terminal.Size as T
 import Data.Char (isLower, toLower)
-import Data.Maybe (isJust, fromMaybe)
+import Data.Maybe (isJust, fromMaybe, catMaybes)
+import Data.List (isPrefixOf)
+import Control.Applicative (liftA2)
 
 type Slide = [String]
 
@@ -19,15 +21,37 @@ data PresentationState = PresentationState {
   currentSlide :: Int
 }
 
-codeFromSlide :: IO String
-codeFromSlide = pure "let x = 100"
+getCurrentSlide :: PresentationState -> Slide
+getCurrentSlide ps = (slides ps) !! (currentSlide ps)
+
+sanitizeCode :: String -> String
+sanitizeCode = concatMap (\c -> if c == '"' then "\\\"" else [c])
+
+filterCode :: Slide -> [String]
+filterCode = catMaybes . map (\line ->
+  if isPrefixOf ">>>" line then Just $ drop 3 line
+  else if isPrefixOf "L>>" line then Just $ "let " ++ drop 3 line
+  else if isPrefixOf "H>>" line then Just $ drop 3 line
+  else Nothing)
+
+isCode :: String -> Bool
+isCode = liftA2 (||) (isPrefixOf ">>>") (isPrefixOf "L>>")
+
+isHiddenCode = isPrefixOf "H>>"
+
+maxCodeLength :: Slide -> Int
+maxCodeLength = maximum . map (\line -> if isCode line then length line - 3 else 0)
+
+printCodeAndExecute :: [String] -> String
+printCodeAndExecute code = unlines (map (\x -> "putStrLn \"> " ++ (sanitizeCode x) ++ "\"") code) ++ unlines code
 
 codeFromAllPreviousSlides :: IO String
-codeFromAllPreviousSlides = pure "let y = 100"
+codeFromAllPreviousSlides = pure "letn y = 100"
 
-h = do
-  putStrLn "To start presentation run:"
-  putStrLn "  :loadPresentation PATH-TO-PRESENTATION"
+help = (sequence $ map (putStrLn . fst . colorize)
+ ["\\k\\WTo load test presentation run \\Y:loadTestPresentation",
+  "\\k\\WTo load your own presentation run \\Y:loadPresentation <PATH-TO-YOUR-PRESENTATION>"])
+  >> pure ()
 
 
 data Presentation = Presentation {
@@ -38,7 +62,8 @@ data Presentation = Presentation {
   g :: Int -> IO (),
   resetSize :: IO (),
   setSize :: Int -> Int -> IO (),
-  showSize :: IO ()
+  showSize :: IO (),
+  codeFromSlide :: IO [String]
 }
 
 parseSlides :: String -> IO [Slide]
@@ -51,7 +76,7 @@ parseSlides path = do
 displaySlide :: IORef PresentationState -> IO ()
 displaySlide ps = do
   ps <- readIORef ps
-  let slide = (slides ps) !! (currentSlide ps)
+  let slide = getCurrentSlide ps
   mapM putStrLn (formatSlide ps slide) >> pure ()
 
 moveSlide :: IORef PresentationState -> (Int -> Int) -> IO ()
@@ -77,6 +102,7 @@ loadPresentation path = do
   let resetSize = getTerminalSize >>= (\(w, h) -> modifyIORef ioRef (\p -> p {width = w, height = h - 3} ) ) >> displaySlide ioRef
   let setSize w h = modifyIORef ioRef (\p -> p {width = w, height = h}) >> displaySlide ioRef
   let showSize = readIORef ioRef >>= (\ps -> putStrLn $ (show $ width ps) ++ "x" ++ (show $ height ps) )
+  let codeFromSlide = filterCode . getCurrentSlide <$> readIORef ioRef
   return $ Presentation {
     n = nextSlide,
     p = previousSlide,
@@ -85,7 +111,8 @@ loadPresentation path = do
     g = goToSlide,
     resetSize = resetSize,
     setSize = setSize,
-    showSize = showSize
+    showSize = showSize,
+    codeFromSlide = codeFromSlide
   }
 
 -- |calculates left-right or top-bottom padding from the maximum size and content size
@@ -97,14 +124,18 @@ repeatN n = take n . repeat
 
 formatSlide :: PresentationState -> Slide -> Slide
 formatSlide ps content =
-  line :  (repeatN topPadding emptyLine) ++ map centerLine content ++ repeatN bottomPadding emptyLine ++ [line]
-  where (topPadding, bottomPadding) = padding (height ps) (length content)
-        line = take (width ps) $ repeat '*'
+  lineOfStars : (repeatN topPadding emptyLine) ++ map centerLine showableContent ++ repeatN bottomPadding emptyLine ++ [lineOfStars]
+  where showableContent = filter (not . isHiddenCode) content
+        (topPadding, bottomPadding) = padding (height ps) (length showableContent)
+        lineOfStars = take (width ps) $ repeat '*'
         emptyLine = '*' : (repeatN ((width ps) -2) ' ') ++ "*"
+        (leftCodePadding, _) = padding (width ps) (maxCodeLength showableContent - 3)
+        trimCode :: String -> String
+        trimCode = drop 3
         centerLine :: String -> String
         centerLine lineContent =
-          let (colorizedContent, len) = colorize lineContent
-              (leftPadding, rightPadding) = padding (width ps) len
+          let (colorizedContent, len) = if isCode lineContent then colorize (trimCode lineContent) else colorize lineContent
+              (leftPadding, rightPadding) = if isCode lineContent then (leftCodePadding, (width ps) - leftCodePadding - len) else padding (width ps) len
           in '*' :
              (repeatN (leftPadding - 1) ' ') ++
              colorizedContent ++
