@@ -66,14 +66,14 @@ Escape code	| Result
 
 All code is run in ghci so don't forget `let`s and `:m +` as imports etc.
 
-\>\>\> show code on a slide and also the same code will be run
+**\>\>\>** show code on a slide and also the same code will be run
 
     >>>putStrLn . show $ double 5
 
-L\>\> show code on a slide and when the code is run it prepends `let`
+**L\>\>** show code on a slide and when the code is run it prepends `let`
 
     L>>double x = x + x
 
-H\>\> doesn't show code on a slide but the code is run. It's useful for imports
+**H\>\>** doesn't show code on a slide but the code is run. It's useful for imports
 
     H>>:m +Data.Char
