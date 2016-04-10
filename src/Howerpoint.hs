@@ -28,19 +28,23 @@ sanitizeCode :: String -> String
 sanitizeCode = concatMap (\c -> if c == '"' then "\\\"" else [c])
 
 filterCode :: Slide -> [String]
-filterCode = catMaybes . map (\line ->
-  if isPrefixOf ">>>" line then Just $ drop 3 line
-  else if isPrefixOf "L>>" line then Just $ "let " ++ drop 3 line
-  else if isPrefixOf "H>>" line then Just $ drop 3 line
-  else Nothing)
+filterCode = catMaybes . map processLine
+  where
+    processLine :: String -> Maybe String
+    processLine line
+      | isPrefixOf ">>>" line = Just $ drop 3 line
+      | isPrefixOf "L>>" line = Just $ "let " ++ drop 3 line
+      | isPrefixOf "H>>" line = Just $ drop 3 line
+      | otherwise             = Nothing
 
 isCode :: String -> Bool
-isCode = liftA2 (||) (isPrefixOf ">>>") (isPrefixOf "L>>")
+isCode s = isPrefixOf ">>>" s || isPrefixOf "L>>" s
 
+isHiddenCode :: String -> Bool
 isHiddenCode = isPrefixOf "H>>"
 
 maxCodeLength :: Slide -> Int
-maxCodeLength = maximum . map (\line -> if isCode line then length line - 3 else 0)
+maxCodeLength = maximum . map (\line -> length line - 3) . filter isCode
 
 printCodeAndExecute :: [String] -> String
 printCodeAndExecute code = unlines (map (\x -> "putStrLn \"> " ++ (sanitizeCode x) ++ "\"") code) ++ unlines code
@@ -48,10 +52,10 @@ printCodeAndExecute code = unlines (map (\x -> "putStrLn \"> " ++ (sanitizeCode 
 codeFromAllPreviousSlides :: IO String
 codeFromAllPreviousSlides = undefined
 
-help = (sequence $ map (putStrLn . fst . colorize)
- ["\\k\\WTo load test presentation run \\Y:loadTestPresentation",
-  "\\k\\WTo load your own presentation run \\Y:loadPresentation <PATH-TO-YOUR-PRESENTATION>"])
-  >> pure ()
+help :: IO ()
+help = mapM_ (putStrLn . fst . colorize)
+       [ "\\k\\WTo load test presentation run \\Y:loadTestPresentation"
+       , "\\k\\WTo load your own presentation run \\Y:loadPresentation <PATH-TO-YOUR-PRESENTATION>"]
 
 
 data Presentation = Presentation {
@@ -85,7 +89,9 @@ moveSlide ps f = do
   displaySlide ps
 
 getTerminalSize :: IO (Int, Int)
-getTerminalSize = T.size >>= (\s -> pure $ maybe (50, 20) (\w -> (T.width w, T.height w)) s)
+getTerminalSize = do
+  s <- T.size
+  return $ maybe (50, 20) (\w -> (T.width w, T.height w)) s
 
 loadPresentation :: String -> IO Presentation
 loadPresentation path = do
@@ -93,16 +99,28 @@ loadPresentation path = do
   (w, h) <- getTerminalSize
   ioRef <- newIORef $ PresentationState slides w (h - 3) 0
   displaySlide ioRef
-  let maxSlides = length slides
-  let nextSlide = moveSlide ioRef (\x -> if x == maxSlides - 1 then x else x + 1)
-  let previousSlide = moveSlide ioRef (\x -> if x == 0 then x else x - 1)
-  let advanceSlides = \i -> moveSlide ioRef (\x -> if x + i >= maxSlides - 1 then maxSlides - 1 else x + i)
-  let goBackSlides = \i -> moveSlide ioRef (\x -> if x - i <= 0 then 0 else x - i)
-  let goToSlide = \i -> moveSlide ioRef (\x -> if i > 0 && i <= maxSlides then i - 1 else x)
-  let resetSize = getTerminalSize >>= (\(w, h) -> modifyIORef ioRef (\p -> p {width = w, height = h - 3} ) ) >> displaySlide ioRef
-  let setSize w h = modifyIORef ioRef (\p -> p {width = w, height = h}) >> displaySlide ioRef
-  let showSize = readIORef ioRef >>= (\ps -> putStrLn $ (show $ width ps) ++ "x" ++ (show $ height ps) )
-  let codeFromSlide = filterCode . getCurrentSlide <$> readIORef ioRef
+  let
+    maxSlides = length slides
+    goToSlide i = moveSlide ioRef (\x -> if i > 0 && i <= maxSlides then i - 1 else x)
+    advanceSlides i = moveSlide ioRef (\x -> min (x + i) (maxSlides - 1))
+    goBackSlides i  = moveSlide ioRef (\x -> max (x - i) 0)
+    previousSlide = goBackSlides 1
+    nextSlide     = advanceSlides 1
+
+    resetSize = do
+      (w, h) <- getTerminalSize
+      modifyIORef ioRef (\p -> p {width = w, height = h - 3})
+      displaySlide ioRef
+
+    setSize w h = do
+      modifyIORef ioRef (\p -> p {width = w, height = h})
+      displaySlide ioRef
+
+    showSize = do
+      ps <- readIORef ioRef
+      putStrLn $ (show $ width ps) ++ "x" ++ (show $ height ps)
+
+    codeFromSlide = filterCode . getCurrentSlide <$> readIORef ioRef
   return $ Presentation {
     n = nextSlide,
     p = previousSlide,
@@ -120,49 +138,61 @@ padding :: Int -> Int -> (Int, Int)
 padding size contentSize = (half, if odd (size - contentSize) then half + 1 else half)
   where half = floor $ (fromIntegral (size - contentSize)) / 2
 
-repeatN n = take n . repeat
-
 formatSlide :: PresentationState -> Slide -> Slide
 formatSlide ps content =
-  lineOfStars : (repeatN topPadding emptyLine) ++ map centerLine showableContent ++ repeatN bottomPadding emptyLine ++ [lineOfStars]
+  lineOfStars : (replicate topPadding emptyLine) ++ map centerLine showableContent ++ replicate bottomPadding emptyLine ++ [lineOfStars]
   where showableContent = filter (not . isHiddenCode) content
         (topPadding, bottomPadding) = padding (height ps) (length showableContent)
         lineOfStars = take (width ps) $ repeat '*'
-        emptyLine = '*' : (repeatN ((width ps) -2) ' ') ++ "*"
+        emptyLine = '*' : (replicate ((width ps) -2) ' ') ++ "*"
         (leftCodePadding, _) = padding (width ps) (maxCodeLength showableContent - 3)
         trimCode :: String -> String
         trimCode = drop 3
         centerLine :: String -> String
         centerLine lineContent =
-          let (colorizedContent, len) = if isCode lineContent then colorize (trimCode lineContent) else colorize lineContent
-              (leftPadding, rightPadding) = if isCode lineContent then (leftCodePadding, (width ps) - leftCodePadding - len) else padding (width ps) len
+          let (colorizedContent, len) =
+                if isCode lineContent
+                    then colorize (trimCode lineContent)
+                    else colorize lineContent
+              (leftPadding, rightPadding) =
+                if isCode lineContent
+                  then (leftCodePadding, (width ps) - leftCodePadding - len)
+                  else padding (width ps) len
           in '*' :
-             (repeatN (leftPadding - 1) ' ') ++
+             (replicate (leftPadding - 1) ' ') ++
              colorizedContent ++
-             (repeatN (rightPadding - 1) ' ') ++
+             (replicate (rightPadding - 1) ' ') ++
              "*"
 
 -- foreground colors 30-37, background colors 40-47
 color :: Char -> Maybe String
-color x = fmap (\c -> "\x1b[" ++ show (if isLower x then c + 30 else c + 40) ++ "m" )
-  (case toLower x of  'k' -> Just 0 -- Black
-                      'r' -> Just 1 -- Red
-                      'g' -> Just 2 -- Green
-                      'y' -> Just 3 -- Yellow
-                      'b' -> Just 4 -- Blue
-                      'm' -> Just 5 -- Magenta
-                      'c' -> Just 6 -- Cyan
-                      'w' -> Just 7 -- White
-                      _   -> Nothing -- No coloring
-  )
+color x =
+  fmap (\c -> "\x1b[" ++ show (if isLower x then c + 30 else c + 40) ++ "m") charColor
+  where
+    charColor = case toLower x of
+      'k' -> Just 0 -- Black
+      'r' -> Just 1 -- Red
+      'g' -> Just 2 -- Green
+      'y' -> Just 3 -- Yellow
+      'b' -> Just 4 -- Blue
+      'm' -> Just 5 -- Magenta
+      'c' -> Just 6 -- Cyan
+      'w' -> Just 7 -- White
+      _   -> Nothing -- No coloring
 
+colorReset :: String
 colorReset = "\x1b[0m"
 
 -- it also takes care of escaping to ;\\k' will be just '\k' and not black color
 colorize :: String -> (String, Int)
-colorize line = if elem '\\' line then colorize' line [] (length line) else (line, length line)
+colorize line =
+  if elem '\\' line
+    then colorize' line [] (length line)
+    else (line, length line)
   where colorize' [] acc len = (acc ++ colorReset, len)
-        colorize' ('\\':x:xs) acc len = let maybeColor = color x
-                                            colorizedChar = fromMaybe [x] maybeColor
-                                        in  colorize' xs (acc ++ colorizedChar) (if isJust maybeColor then len - 2 else len)
+        colorize' ('\\':x:xs) acc len =
+          let maybeColor = color x
+              colorizedChar = fromMaybe [x] maybeColor
+              len' = if isJust maybeColor then len - 2 else len
+          in  colorize' xs (acc ++ colorizedChar) len'
         colorize' (x:xs) acc len = colorize' xs (acc ++ [x]) len
