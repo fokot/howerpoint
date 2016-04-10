@@ -183,7 +183,7 @@ color x =
 colorReset :: String
 colorReset = "\x1b[0m"
 
--- it also takes care of escaping to ;\\k' will be just '\k' and not black color
+-- it also takes care of escaping to '\\k' will be just '\k' and not black color
 colorize :: String -> (String, Int)
 colorize line =
   if elem '\\' line
