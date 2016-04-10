@@ -6,6 +6,6 @@
 
 :def loadPresentation \p -> return $ "Presentation {..} <- loadPresentation \"" ++ p ++ "\""
 
-:def loadTestPresentation const . return $ "Presentation {..} <- loadPresentation \"/Users/Frantisek/haskell/howerpoint/test/resources/howerpoint.txt\""
+:def loadTestPresentation const . return $ "Presentation {..} <- loadPresentation \"test/resources/howerpoint.txt\""
 
 :def rr const . return $ ":cmd printCodeAndExecute <$> codeFromSlide"
