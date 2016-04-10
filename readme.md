@@ -34,7 +34,6 @@ Command | Description
 `setSize x y` | Set the slide size to x y
 `showSize` | Show current slide size
 
-
 <!--
 Command | Shortcut | Symbolic alias | Description
 --- | --- | --- | ---
