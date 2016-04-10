@@ -46,7 +46,7 @@ printCodeAndExecute :: [String] -> String
 printCodeAndExecute code = unlines (map (\x -> "putStrLn \"> " ++ (sanitizeCode x) ++ "\"") code) ++ unlines code
 
 codeFromAllPreviousSlides :: IO String
-codeFromAllPreviousSlides = pure "letn y = 100"
+codeFromAllPreviousSlides = undefined
 
 help = (sequence $ map (putStrLn . fst . colorize)
  ["\\k\\WTo load test presentation run \\Y:loadTestPresentation",
