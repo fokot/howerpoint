@@ -1,13 +1,14 @@
 This is Howerpoint
 Powerpoint replacement
-Command 'n' will navigate you to the next slide
+
+Command \k\W'n'\0 will navigate you to the next slide
 ---
 Navigation
 
-Command 'p' to previous
-Command 'nn 5' will skip 5 slided forward
-Command 'pp 3' will skip 3 slided backwards
-Command 'g 7' will go to slide number 7
+Command \k\W'p'\0 to previous
+Command \k\W'nn 5'\0 will skip 5 slided forward
+Command \k\W'pp 3'\0 will skip 3 slided backwards
+Command \k\W'g 7'\0 will go to slide number 7
 ---
 \rThis line is red
 \gAnd this line is green
@@ -19,11 +20,11 @@ More \mcolors \rin one \wline, wow!
 And this \Yword\W has yellow
 More \k\Mcolors \Rin one \Wline, wow!
 ---
-Run command ':rr' to execute code from this slide
+Run command \k\W':rr'\0 to execute code from this slide
 Double will be defined in the session so you can also try to run 'double 10' after that
 
-Start the line with code with '>>>'
-If let is needed to properly execute code in ghci and you don't want to show it on the slide start with 'L>>'
+Start the line with code with \k\W'>>>'
+If let is needed to properly execute code in ghci and you don't want to show it on the slide start with \k\W'L>>'
 
 
 L>>double x = x + x
@@ -31,7 +32,7 @@ L>>double x = x + x
 >>>putStrLn . show $ double 5
 ---
 Multiline code also works
-'H>>' will add code to the slide but code will be not visible in the presentation
+\k\W'H>>'\0 will add code to the slide but code will be not visible in the presentation
 
 H>>:m +Data.Char
 >>>do putStrLn "Give me your name"
@@ -40,4 +41,4 @@ H>>:m +Data.Char
 >>>   putStrLn $ map toUpper name
 ---
 THIS NOT IMPLEMENTED YET
-To execute code from all slides until current one, write ':rrr'
+To execute code from all slides until current one, write \k\W':rrr'

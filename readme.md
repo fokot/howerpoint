@@ -61,6 +61,7 @@ Escape code	| Result
 --- | ---
 \x | Foreground color, where x is one of: blac`k`, `r`ed, `g`reen, `y`ellow, `b`lue, `m`agenta, `c`yan, `w`hite
 \X | Background color, where capital X is one of the same as above
+\0 | Resets foreground and background colors to terminal default
 
 ###Code
 

@@ -167,7 +167,9 @@ formatSlide ps content =
 -- foreground colors 30-37, background colors 40-47
 color :: Char -> Maybe String
 color x =
-  fmap (\c -> "\x1b[" ++ show (if isLower x then c + 30 else c + 40) ++ "m") charColor
+  if x == '0'
+    then Just colorReset
+    else fmap (\c -> "\x1b[" ++ show (if isLower x then c + 30 else c + 40) ++ "m") charColor
   where
     charColor = case toLower x of
       'k' -> Just 0 -- Black
