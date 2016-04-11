@@ -1,41 +1,65 @@
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Howerpoint where
 
-import System.IO
-import Data.List.Split
-import Data.IORef
-import Control.DeepSeq (deepseq)
+import           Control.DeepSeq              (deepseq)
+import           Control.Monad                ((>=>))
+import           Data.Char                    (isLower, toLower)
+import           Data.IORef
+import           Data.List                    (isPrefixOf)
+import           Data.List.Split
+import           Data.Maybe                   (fromMaybe, isJust, mapMaybe)
 import qualified System.Console.Terminal.Size as T
-import Data.Char (isLower, toLower)
-import Data.Maybe (isJust, fromMaybe, catMaybes)
-import Data.List (isPrefixOf)
-import Control.Applicative (liftA2)
+import           System.IO
 
 type Slide = [String]
 
+data Zipper a = Zipper [a] a [a]
+
+extract :: Zipper a -> a
+extract (Zipper _ x _) = x
+
+fromList :: [a] -> Zipper a
+fromList (x : xs)
+  = Zipper [] x xs
+fromList []
+  = error "Empty list"
+
+moveLeft :: Zipper a -> Maybe (Zipper a)
+moveLeft (Zipper (l : ls) x rs)
+  = Just $ Zipper ls l (x : rs)
+moveLeft z
+  = Nothing
+
+moveRight :: Zipper a -> Maybe (Zipper a)
+moveRight (Zipper ls x (r : rs))
+  = Just $ Zipper (x : ls) r rs
+moveRight z
+  = Nothing
+
 data PresentationState = PresentationState {
-  slides :: [Slide],
-  width :: Int,
-  height :: Int,
+  slides       :: Zipper Slide,
+  width        :: Int,
+  height       :: Int,
   currentSlide :: Int
 }
 
 getCurrentSlide :: PresentationState -> Slide
-getCurrentSlide ps = (slides ps) !! (currentSlide ps)
+getCurrentSlide = extract . slides
 
 sanitizeCode :: String -> String
 sanitizeCode = concatMap (\c -> if c == '"' then "\\\"" else [c])
 
 filterCode :: Slide -> [String]
-filterCode = catMaybes . map processLine
+filterCode = mapMaybe processLine
   where
     processLine :: String -> Maybe String
     processLine line
-      | isPrefixOf ">>>" line = Just $ drop 3 line
-      | isPrefixOf "L>>" line = Just $ "let " ++ drop 3 line
-      | isPrefixOf "H>>" line = Just $ drop 3 line
-      | otherwise             = Nothing
+      | ">>>" `isPrefixOf` line = Just $ drop 3 line
+      | "L>>" `isPrefixOf` line = Just $ "let " ++ drop 3 line
+      | "H>>" `isPrefixOf` line = Just $ drop 3 line
+      | otherwise               = Nothing
 
 isCode :: String -> Bool
 isCode s = isPrefixOf ">>>" s || isPrefixOf "L>>" s
@@ -44,10 +68,10 @@ isHiddenCode :: String -> Bool
 isHiddenCode = isPrefixOf "H>>"
 
 maxCodeLength :: Slide -> Int
-maxCodeLength = maximum . map (\line -> length line - 3) . filter isCode
+maxCodeLength = maximum . map (subtract 3 . length) . filter isCode
 
 printCodeAndExecute :: [String] -> String
-printCodeAndExecute code = unlines (map (\x -> "putStrLn \"> " ++ (sanitizeCode x) ++ "\"") code) ++ unlines code
+printCodeAndExecute code = unlines (map (\x -> "putStrLn \"> " ++ sanitizeCode x ++ "\"") code) ++ unlines code
 
 codeFromAllPreviousSlides :: IO String
 codeFromAllPreviousSlides = undefined
@@ -59,34 +83,39 @@ help = mapM_ (putStrLn . fst . colorize)
 
 
 data Presentation = Presentation {
-  n :: IO (),
-  p :: IO (),
-  nn :: Int -> IO (),
-  pp :: Int -> IO (),
-  g :: Int -> IO (),
-  resetSize :: IO (),
-  setSize :: Int -> Int -> IO (),
-  showSize :: IO (),
+  n             :: IO (),
+  p             :: IO (),
+  nn            :: Int -> IO (),
+  pp            :: Int -> IO (),
+  g             :: Int -> IO (),
+  resetSize     :: IO (),
+  setSize       :: Int -> Int -> IO (),
+  showSize      :: IO (),
   codeFromSlide :: IO [String]
 }
 
-parseSlides :: String -> IO [Slide]
+parseSlides :: String -> IO (Zipper Slide)
 parseSlides path = do
     h <- openFile path ReadMode
-    slides <- (splitOn ["---"]) . lines <$> hGetContents h
-    slides `deepseq` hClose h
-    pure slides
+    slides' <- splitOn ["---"] . lines <$> hGetContents h
+    slides' `deepseq` hClose h
+    return $ fromList slides'
 
 displaySlide :: IORef PresentationState -> IO ()
 displaySlide ps = do
-  ps <- readIORef ps
-  let slide = getCurrentSlide ps
-  mapM putStrLn (formatSlide ps slide) >> pure ()
+  ps' <- readIORef ps
+  mapM_ putStrLn (formatSlide ps' (getCurrentSlide ps'))
 
-moveSlide :: IORef PresentationState -> (Int -> Int) -> IO ()
-moveSlide ps f = do
-  modifyIORef ps (\p -> p {currentSlide = f (currentSlide p)})
-  displaySlide ps
+moveSlide :: (Int -> Int) -> PresentationState -> PresentationState
+moveSlide f ps
+  = maybe ps (\ss -> ps {slides = ss, currentSlide = newpos}) slides'
+  where ntimes n fun = foldr (>=>) return (replicate n fun)
+        pos = currentSlide ps
+        newpos = f pos
+        dir = if pos < newpos
+              then moveRight
+              else moveLeft
+        slides' = ntimes (abs $ newpos - pos) dir (slides ps)
 
 getTerminalSize :: IO (Int, Int)
 getTerminalSize = do
@@ -95,56 +124,48 @@ getTerminalSize = do
 
 loadPresentation :: String -> IO Presentation
 loadPresentation path = do
-  slides <- parseSlides path
+  slides' <- parseSlides path
   (w, h) <- getTerminalSize
-  ioRef <- newIORef $ PresentationState slides w (h - 3) 0
+  ioRef <- newIORef $ PresentationState slides' w (h - 3) 0
+
   displaySlide ioRef
   let
-    maxSlides = length slides
-    goToSlide i = moveSlide ioRef (\x -> if i > 0 && i <= maxSlides then i - 1 else x)
-    advanceSlides i = moveSlide ioRef (\x -> min (x + i) (maxSlides - 1))
-    goBackSlides i  = moveSlide ioRef (\x -> max (x - i) 0)
-    previousSlide = goBackSlides 1
-    nextSlide     = advanceSlides 1
+    g  = moveWith . const
+    nn = moveWith . (+)
+    pp = moveWith . subtract
+    p  = pp 1
+    n  = nn 1
+
+    moveWith f
+      = modifyIORef ioRef (moveSlide f) >> displaySlide ioRef
 
     resetSize = do
-      (w, h) <- getTerminalSize
-      modifyIORef ioRef (\p -> p {width = w, height = h - 3})
-      displaySlide ioRef
+      (w', h') <- getTerminalSize
+      setSize w' (h' - 3)
 
-    setSize w h = do
-      modifyIORef ioRef (\p -> p {width = w, height = h})
+    setSize w' h' = do
+      modifyIORef ioRef (\p' -> p' {width = w', height = h'})
       displaySlide ioRef
 
     showSize = do
       ps <- readIORef ioRef
-      putStrLn $ (show $ width ps) ++ "x" ++ (show $ height ps)
+      putStrLn $ show (width ps) ++ "x" ++ show (height ps)
 
     codeFromSlide = filterCode . getCurrentSlide <$> readIORef ioRef
-  return $ Presentation {
-    n = nextSlide,
-    p = previousSlide,
-    nn = advanceSlides,
-    pp = goBackSlides,
-    g = goToSlide,
-    resetSize = resetSize,
-    setSize = setSize,
-    showSize = showSize,
-    codeFromSlide = codeFromSlide
-  }
+  return Presentation {..}
 
 -- |calculates left-right or top-bottom padding from the maximum size and content size
 padding :: Int -> Int -> (Int, Int)
 padding size contentSize = (half, if odd (size - contentSize) then half + 1 else half)
-  where half = floor $ (fromIntegral (size - contentSize)) / 2
+  where half = (size - contentSize) `div` 2
 
 formatSlide :: PresentationState -> Slide -> Slide
 formatSlide ps content =
-  lineOfStars : (replicate topPadding emptyLine) ++ map centerLine showableContent ++ replicate bottomPadding emptyLine ++ [lineOfStars]
+  lineOfStars : replicate topPadding emptyLine ++ map centerLine showableContent ++ replicate bottomPadding emptyLine ++ [lineOfStars]
   where showableContent = filter (not . isHiddenCode) content
         (topPadding, bottomPadding) = padding (height ps) (length showableContent)
-        lineOfStars = take (width ps) $ repeat '*'
-        emptyLine = '*' : (replicate ((width ps) -2) ' ') ++ "*"
+        lineOfStars = replicate (width ps) '*'
+        emptyLine = '*' : replicate (width ps - 2) ' ' ++ "*"
         (leftCodePadding, _) = padding (width ps) (maxCodeLength showableContent - 3)
         trimCode :: String -> String
         trimCode = drop 3
@@ -156,31 +177,33 @@ formatSlide ps content =
                     else colorize lineContent
               (leftPadding, rightPadding) =
                 if isCode lineContent
-                  then (leftCodePadding, (width ps) - leftCodePadding - len)
+                  then (leftCodePadding, width ps - leftCodePadding - len)
                   else padding (width ps) len
           in '*' :
-             (replicate (leftPadding - 1) ' ') ++
+             replicate (leftPadding - 1) ' ' ++
              colorizedContent ++
-             (replicate (rightPadding - 1) ' ') ++
+             replicate (rightPadding - 1) ' ' ++
              "*"
 
 -- foreground colors 30-37, background colors 40-47
 color :: Char -> Maybe String
-color x =
-  if x == '0'
-    then Just colorReset
-    else fmap (\c -> "\x1b[" ++ show (if isLower x then c + 30 else c + 40) ++ "m") charColor
+color '0'
+  = Just colorReset
+color x
+  = fmap (\c -> "\x1b[" ++ show (if isLower x then c + 30 else c + 40) ++ "m")
+         (lookup (toLower x) colors)
   where
-    charColor = case toLower x of
-      'k' -> Just 0 -- Black
-      'r' -> Just 1 -- Red
-      'g' -> Just 2 -- Green
-      'y' -> Just 3 -- Yellow
-      'b' -> Just 4 -- Blue
-      'm' -> Just 5 -- Magenta
-      'c' -> Just 6 -- Cyan
-      'w' -> Just 7 -- White
-      _   -> Nothing -- No coloring
+    colors :: [(Char, Int)]
+    colors =
+      [ ('k', 0) -- Black
+      , ('r', 1) -- Red
+      , ('g', 2) -- Green
+      , ('y', 3) -- Yellow
+      , ('b', 4) -- Blue
+      , ('m', 5) -- Magenta
+      , ('c', 6) -- Cyan
+      , ('w', 7) -- White
+      ]
 
 colorReset :: String
 colorReset = "\x1b[0m"
@@ -188,7 +211,7 @@ colorReset = "\x1b[0m"
 -- it also takes care of escaping to '\\k' will be just '\k' and not black color
 colorize :: String -> (String, Int)
 colorize line =
-  if elem '\\' line
+  if '\\' `elem` line
     then colorize' line [] (length line)
     else (line, length line)
   where colorize' [] acc len = (acc ++ colorReset, len)
