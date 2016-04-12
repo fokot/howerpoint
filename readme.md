@@ -7,7 +7,7 @@
 
 _It's only a single Haskell file!_
 
-[![asciicast](https://asciinema.org/a/41859.png)](https://asciinema.org/a/41859)
+[![asciicast](https://asciinema.org/a/42096.png)](https://asciinema.org/a/42096)
 
 To run presentation create presentation as a text file.
 Run `stack ghci` and have in the in the root of the project
