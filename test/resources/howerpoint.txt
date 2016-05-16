@@ -40,5 +40,4 @@ H>>:m +Data.Char
 >>>   putStr "Welcome to Howepoint, "
 >>>   putStrLn $ map toUpper name
 ---
-THIS NOT IMPLEMENTED YET
-To execute code from all slides until current one, write \k\W':rrr'
+To execute code from all slides until the current one, write \k\W':rrr'

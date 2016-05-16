@@ -32,6 +32,7 @@ Command | Description
 `pp i` | Go back i slides
 `g i` | Go to slide i
 `:rr` | Run code from slide
+`:rrr` | Run code from current and all previous slides
 `resetSize` | Set the slide size to current terminal size
 `setSize x y` | Set the slide size to x y
 `showSize` | Show current slide size

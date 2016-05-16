@@ -4,7 +4,7 @@
 module Howerpoint where
 
 import           Control.DeepSeq              (deepseq)
-import           Control.Monad                ((>=>))
+import           Control.Monad                ((>=>), liftM)
 import           Data.Char                    (isLower, toLower)
 import           Data.IORef
 import           Data.List                    (isPrefixOf)
@@ -19,6 +19,9 @@ data Zipper a = Zipper [a] a [a]
 
 extract :: Zipper a -> a
 extract (Zipper _ x _) = x
+
+previous :: Zipper a -> [a]
+previous (Zipper x _ _) = x
 
 fromList :: [a] -> Zipper a
 fromList (x : xs)
@@ -48,6 +51,9 @@ data PresentationState = PresentationState {
 getCurrentSlide :: PresentationState -> Slide
 getCurrentSlide = extract . slides
 
+getPreviousSlides :: PresentationState -> [Slide]
+getPreviousSlides = previous . slides
+
 sanitizeCode :: String -> String
 sanitizeCode = concatMap (\c -> if c == '"' then "\\\"" else [c])
 
@@ -73,9 +79,6 @@ maxCodeLength = maximum . map (subtract 3 . length) . filter isCode
 printCodeAndExecute :: [String] -> String
 printCodeAndExecute code = unlines (map (\x -> "putStrLn \"> " ++ sanitizeCode x ++ "\"") code) ++ unlines code
 
-codeFromAllPreviousSlides :: IO String
-codeFromAllPreviousSlides = undefined
-
 help :: IO ()
 help = mapM_ (putStrLn . fst . colorize)
        [ "\\k\\WTo load test presentation run \\Y:loadTestPresentation"
@@ -83,15 +86,16 @@ help = mapM_ (putStrLn . fst . colorize)
 
 
 data Presentation = Presentation {
-  n             :: IO (),
-  p             :: IO (),
-  nn            :: Int -> IO (),
-  pp            :: Int -> IO (),
-  g             :: Int -> IO (),
-  resetSize     :: IO (),
-  setSize       :: Int -> Int -> IO (),
-  showSize      :: IO (),
-  codeFromSlide :: IO [String]
+  n                      :: IO (),
+  p                      :: IO (),
+  nn                     :: Int -> IO (),
+  pp                     :: Int -> IO (),
+  g                      :: Int -> IO (),
+  resetSize              :: IO (),
+  setSize                :: Int -> Int -> IO (),
+  showSize               :: IO (),
+  codeFromSlide          :: IO [String],
+  codeFromPreviousSlides :: IO [[String]]
 }
 
 parseSlides :: String -> IO (Zipper Slide)
@@ -152,6 +156,9 @@ loadPresentation path = do
       putStrLn $ show (width ps) ++ "x" ++ show (height ps)
 
     codeFromSlide = filterCode . getCurrentSlide <$> readIORef ioRef
+
+    codeFromPreviousSlides = liftM (map filterCode) $ getPreviousSlides <$> readIORef ioRef
+
   return Presentation {..}
 
 -- |calculates left-right or top-bottom padding from the maximum size and content size

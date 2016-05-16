@@ -1,6 +1,10 @@
 # Change Log
 
 ## [Unreleased][unreleased]
+### Added
+- :rrr command
+### Changed
+- removed Setup.hs
 
 
 ## [1] - 2016-04-11

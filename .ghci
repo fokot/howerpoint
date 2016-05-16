@@ -9,3 +9,5 @@
 :def loadTestPresentation const . return $ "Presentation {..} <- loadPresentation \"test/resources/howerpoint.txt\""
 
 :def rr const . return $ ":cmd printCodeAndExecute <$> codeFromSlide"
+
+:def rrr const . return $ ":cmd liftM (concat . reverse . map printCodeAndExecute) codeFromPreviousSlides \n :rr"
