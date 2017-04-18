@@ -57,7 +57,7 @@ Command | Shortcut | Symbolic alias | Description
 -->
 
 
-###ANSI colors
+### ANSI colors
 
 Escape code	| Result
 --- | ---
@@ -65,7 +65,7 @@ Escape code	| Result
 \X | Background color, where capital X is one of the same as above
 \0 | Resets foreground and background colors to terminal default
 
-###Code
+### Code
 
 All code is run in ghci so don't forget `let`s and `:m +` as imports etc.
 
